@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar 16 22:32:54 2020
+
+@author: ankit
+"""
+
+import pandas as pd
+
+filepath_dict = {'yelp':'sentiment labelled sentences/yelp_labelled.txt',
+                 'amazon':'sentiment labelled sentences/amazon_cells_labelled.txt',
+                 'imdb':'sentiment labelled sentences/imdb_labelled.txt'}
+
+
+df_list = []
+
+for key,value in filepath_dict.items():
+    df = pd.read_csv(value,names=['sentence','label'],sep='\t')
+    df['source']=key
+    df_list.append(df)
+    
+df = pd.concat(df_list)
+
+#import countvectorizer to create BoW model
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+
+df_yelp = df[df['source']=='yelp']
+
+sentences = df_yelp['sentence'].values
+y = df_yelp['label'].values
+
+#create Train,Test data split
+sentences_train,sentences_test,y_train,y_test = train_test_split(sentences,y,test_size=0.25,random_state=1000)
+
+vectorizer = CountVectorizer()
+vectorizer.fit(sentences)
+
+X_train = vectorizer.transform(sentences_train)
+X_test = vectorizer.transform(sentences_test)
+
+#building a simple baseline logistic regression classifier
+from sklearn.linear_model import LogisticRegression
+
+classifier = LogisticRegression()
+classifier.fit(X_train,y_train)
+classifier.score(X_test,y_test)
+
+#validating the accuracy for all the models
+for source in df['source'].unique():
+    df_source = df[df['source'] == source]
+    sentences = df_source['sentence'].values
+    y = df_source['label'].values
+
+    sentences_train, sentences_test, y_train, y_test = train_test_split(
+        sentences, y, test_size=0.25, random_state=1000)
+
+#Check the list of parameters to be tweaked to improve model accuracy
+    vectorizer = CountVectorizer(ngram_range=(1,2))
+    vectorizer.fit(sentences_train)
+    X_train = vectorizer.transform(sentences_train)
+    X_test  = vectorizer.transform(sentences_test)
+
+    classifier = LogisticRegression()
+    classifier.fit(X_train, y_train)
+    score = classifier.score(X_test, y_test)
+    print('Accuracy for {} data: {:.4f}'.format(source, score))
+    
+
+#tf-idf vectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+for source in df['source'].unique():
+    df_source = df[df['source']==source]
+    sentences = df_source['sentence'].values
+    y = df_source['label'].values
+    
+    sentences_train, sentences_test, y_train, y_test = train_test_split(
+        sentences, y, test_size=0.25, random_state=1000)
+
+#Check the list of parameters to be tweaked to improve model accuracy
+    vectorizer_Tfidf = TfidfVectorizer(ngram_range=(1,2))
+    vectorizer_Tfidf.fit(sentences_train)
+    X_train =  vectorizer_Tfidf.transform(sentences_train)
+    X_test  =  vectorizer_Tfidf.transform(sentences_test)
+    
+    classifier = LogisticRegression()
+    classifier.fit(X_train, y_train)
+    score = classifier.score(X_test, y_test)
+    print('Accuracy for {} data: {:.4f}'.format(source, score))
